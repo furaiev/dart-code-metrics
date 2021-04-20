@@ -6,6 +6,7 @@ import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/file_system/physical_file_system.dart';
 import 'package:analyzer/source/line_info.dart';
+import 'package:collection/collection.dart';
 import 'package:file/local.dart';
 import 'package:glob/glob.dart';
 import 'package:path/path.dart' as p;
@@ -89,7 +90,12 @@ class MetricsAnalyzer {
     for (final filePath in filePaths) {
       final normalized = p.normalize(p.absolute(filePath));
 
-      final analysisContext = collection.contextFor(normalized);
+      final analysisContext = collection.contexts.firstWhereOrNull(
+          (context) => context.contextRoot.isAnalyzed(normalized));
+      if (analysisContext == null) {
+        continue;
+      }
+
       final result =
           await analysisContext.currentSession.getResolvedUnit(normalized);
 

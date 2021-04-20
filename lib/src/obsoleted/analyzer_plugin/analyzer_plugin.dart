@@ -45,7 +45,7 @@ import 'analyzer_plugin_utils.dart';
 
 const _codeMetricsId = 'code-metrics';
 
-const _defaultSkippedFolders = ['.dart_tool/**', 'packages/**'];
+const _defaultSkippedFolders = ['packages/**'];
 
 class MetricsAnalyzerPlugin extends ServerPlugin {
   final _configs = <AnalysisDriverGeneric, AnalyzerPluginConfig>{};
@@ -187,13 +187,18 @@ class MetricsAnalyzerPlugin extends ServerPlugin {
     ResolvedUnitResult analysisResult,
   ) {
     try {
-      if (analysisResult.unit != null) {
+      final path = analysisResult.path;
+      if (analysisResult.unit != null &&
+          path != null &&
+          (driver.analysisContext?.contextRoot.isAnalyzed(path) ?? false)) {
         final fixes = _check(driver, analysisResult);
 
-        channel.sendNotification(plugin.AnalysisErrorsParams(
-          analysisResult.path!,
-          fixes.map((fix) => fix.error).toList(),
-        ).toNotification());
+        channel.sendNotification(
+          plugin.AnalysisErrorsParams(
+            path,
+            fixes.map((fix) => fix.error).toList(),
+          ).toNotification(),
+        );
       } else {
         channel.sendNotification(
           plugin.AnalysisErrorsParams(analysisResult.path!, [])
@@ -468,8 +473,10 @@ class MetricsAnalyzerPlugin extends ServerPlugin {
       final contextRoot = contextRootContaining(file);
       if (contextRoot != null) {
         // TODO(dkrutskikh): Which driver should we use if there is no context root?
-        final driver = driverMap[contextRoot]!;
-        filesByDriver.putIfAbsent(driver, () => <String>[]).add(file);
+        final driver = driverMap[contextRoot];
+        if (driver != null) {
+          filesByDriver.putIfAbsent(driver, () => <String>[]).add(file);
+        }
       }
     }
     filesByDriver.forEach((driver, files) {
